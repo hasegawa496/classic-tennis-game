@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クラシック テニス</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">
+            <span id="playerScore">0</span>
+            <span class="separator">:</span>
+            <span id="computerScore">0</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="controls">
+            <p>操作: マウスでパドルを移動</p>
+            <button id="startBtn">ゲーム開始</button>
+            <button id="pauseBtn" style="display: none;">一時停止</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
