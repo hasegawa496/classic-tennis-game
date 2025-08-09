@@ -3,42 +3,22 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>トロンボーン音声再生デモ</title>
+<title>トロンボーン音声 Base64 外部読み込み</title>
 <style>
-  body {
-    font-family: sans-serif;
-    max-width: 480px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-    text-align: center;
-  }
-  input[type="range"] {
-    width: 100%;
-    margin: 1.5rem 0;
-  }
-  #info {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-  }
-  button {
-    font-size: 1.2rem;
-    padding: 0.6rem 1.2rem;
-    cursor: pointer;
-  }
+  /* スタイルは先ほどと同じでOK */
 </style>
 </head>
 <body>
-<h1>トロンボーン音声再生デモ</h1>
+<h1>トロンボーン音声 Base64 外部読み込みデモ</h1>
 <p>スライダーで音の高さを変え、ボタンで再生/停止します。</p>
 
 <div id="info">読み込み中…</div>
-<input type="range" id="pitchSlider" min="1" max="7" step="0.01" value="1" />
-<button id="playBtn">再生</button>
+<input type="range" id="pitchSlider" min="1" max="7" step="0.01" value="1" disabled />
+<button id="playBtn" disabled>再生</button>
 
+<script src="base64AudioData.js"></script> <!-- 先に読み込む -->
 <script>
-  const audioUrl = "trombone.wav"; // 例：MDNサイン波音
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
   let buffer = null;
   let source = null;
   let gainNode = null;
@@ -48,24 +28,31 @@
   const slider = document.getElementById("pitchSlider");
   const playBtn = document.getElementById("playBtn");
 
+  function base64ToArrayBuffer(base64) {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
   function getFreq(pos) {
     const baseFreq = 440;
     return baseFreq / Math.pow(2, (pos - 1) / 6);
   }
-
   function getPlaybackRate(pos) {
     return getFreq(pos) / 440;
   }
 
-  async function loadAudio(url) {
+  async function loadAudioFromBase64(base64) {
     try {
-      const res = await fetch(url);
-      if(!res.ok) throw new Error("音声の取得に失敗しました");
-      const arrayBuffer = await res.arrayBuffer();
+      const arrayBuffer = base64ToArrayBuffer(base64);
       const decoded = await audioCtx.decodeAudioData(arrayBuffer);
       return decoded;
     } catch (e) {
-      info.textContent = "音声の読み込みに失敗しました";
+      info.textContent = "音声のデコードに失敗しました";
       console.error(e);
       return null;
     }
@@ -73,11 +60,9 @@
 
   function startSound() {
     if (isPlaying || !buffer) return;
-
     if (audioCtx.state === "suspended") {
       audioCtx.resume();
     }
-
     source = audioCtx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
@@ -125,7 +110,8 @@
   });
 
   (async () => {
-    buffer = await loadAudio(audioUrl);
+    // base64AudioDataは外部ファイルでwindowにセット済み
+    buffer = await loadAudioFromBase64(window.base64AudioData);
     if(buffer) {
       info.textContent = "読み込み完了！";
       playBtn.disabled = false;
