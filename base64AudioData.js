@@ -17,3 +17,11 @@ const base64AudioData =
 
 // グローバル変数としてwindowにセット（ES6モジュール非使用の場合）
 window.base64AudioData = base64AudioData;
+
+source = audioCtx.createBufferSource();
+source.buffer = buffer;  // ロングトーンの音声バッファ
+source.loop = true;      // ループをONにして連続再生
+source.playbackRate.value = desiredRate;  // 音の高さ調整
+
+source.connect(audioCtx.destination);
+source.start();
