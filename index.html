@@ -1,25 +1,141 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>クラシック テニス</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>トロンボーン音声再生デモ</title>
+<style>
+  body {
+    font-family: sans-serif;
+    max-width: 480px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    text-align: center;
+  }
+  input[type="range"] {
+    width: 100%;
+    margin: 1.5rem 0;
+  }
+  #info {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  button {
+    font-size: 1.2rem;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="score">
-            <span id="playerScore">0</span>
-            <span class="separator">:</span>
-            <span id="computerScore">0</span>
-        </div>
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div class="controls">
-            <p>操作: マウスでパドルを移動</p>
-            <button id="startBtn">ゲーム開始</button>
-            <button id="pauseBtn" style="display: none;">一時停止</button>
-        </div>
-    </div>
-    <script src="game.js"></script>
+<h1>トロンボーン音声再生デモ</h1>
+<p>スライダーで音の高さを変え、ボタンで再生/停止します。</p>
+
+<div id="info">読み込み中…</div>
+<input type="range" id="pitchSlider" min="1" max="7" step="0.01" value="1" />
+<button id="playBtn">再生</button>
+
+<script>
+  const audioUrl = "https://cdn.jsdelivr.net/gh/mdn/webaudio-examples/audio/sine.wav"; // 例：MDNサイン波音
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  let buffer = null;
+  let source = null;
+  let gainNode = null;
+  let isPlaying = false;
+
+  const info = document.getElementById("info");
+  const slider = document.getElementById("pitchSlider");
+  const playBtn = document.getElementById("playBtn");
+
+  function getFreq(pos) {
+    const baseFreq = 440;
+    return baseFreq / Math.pow(2, (pos - 1) / 6);
+  }
+
+  function getPlaybackRate(pos) {
+    return getFreq(pos) / 440;
+  }
+
+  async function loadAudio(url) {
+    try {
+      const res = await fetch(url);
+      if(!res.ok) throw new Error("音声の取得に失敗しました");
+      const arrayBuffer = await res.arrayBuffer();
+      const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+      return decoded;
+    } catch (e) {
+      info.textContent = "音声の読み込みに失敗しました";
+      console.error(e);
+      return null;
+    }
+  }
+
+  function startSound() {
+    if (isPlaying || !buffer) return;
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
+    source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const rate = getPlaybackRate(parseFloat(slider.value));
+    source.playbackRate.setValueAtTime(rate, audioCtx.currentTime);
+
+    gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
+
+    source.connect(gainNode).connect(audioCtx.destination);
+    source.start();
+
+    isPlaying = true;
+    playBtn.textContent = "停止";
+    info.textContent = `ポジション: ${slider.value} | ピッチ倍率: ${rate.toFixed(2)}`;
+  }
+
+  function stopSound() {
+    if (!isPlaying) return;
+    source.stop();
+    source.disconnect();
+    gainNode.disconnect();
+    source = null;
+    gainNode = null;
+    isPlaying = false;
+    playBtn.textContent = "再生";
+    info.textContent = "停止中";
+  }
+
+  slider.addEventListener("input", () => {
+    if (isPlaying && source) {
+      const rate = getPlaybackRate(parseFloat(slider.value));
+      source.playbackRate.linearRampToValueAtTime(rate, audioCtx.currentTime + 0.05);
+      info.textContent = `ポジション: ${slider.value} | ピッチ倍率: ${rate.toFixed(2)}`;
+    }
+  });
+
+  playBtn.addEventListener("click", () => {
+    if (isPlaying) {
+      stopSound();
+    } else {
+      startSound();
+    }
+  });
+
+  (async () => {
+    buffer = await loadAudio(audioUrl);
+    if(buffer) {
+      info.textContent = "読み込み完了！";
+      playBtn.disabled = false;
+      slider.disabled = false;
+    } else {
+      info.textContent = "読み込み失敗";
+      playBtn.disabled = true;
+      slider.disabled = true;
+    }
+  })();
+</script>
 </body>
 </html>
